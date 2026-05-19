@@ -31,7 +31,7 @@ A one-time device authorization flow links your GitHub account. The session pers
 > Say hello and tell me what you can help with
 > /exit
 ```
-Test the included sample Python book app: `cd samples/book-app-project && python book_app.py list`
+Test the included sample .NET book app: `cd Src/Books.Api && dotnet run`
 
 ### Key Takeaways
 - Codespaces is the fastest path to getting started.
@@ -67,8 +67,8 @@ Test the included sample Python book app: `cd samples/book-app-project && python
 | `/exit` | End the session |
 
 ### Three Demo Highlights
-1. **Code Review in Seconds**: `> Review @samples/book-app-project/book_app.py for code quality issues`
-2. **Explain Confusing Code**: `> Explain what @samples/book-app-project/books.py does in simple terms`
+1. **Code Review in Seconds**: `> Review @Src/Books.Api/Services/BookApiEndpoints.cs for code quality issues`
+2. **Explain Confusing Code**: `> Explain what @Src/Books.Api/Services/BookCollection.cs does in simple terms`
 3. **Generate Working Code**: Describe a function in plain English and get working code instantly.
 
 ### Remote Sessions
@@ -92,9 +92,9 @@ copilot --remote  # Monitor and steer a CLI session from mobile or browser
 
 | Pattern | Example |
 |---------|---------|
-| `@file.py` | `Review @books.py` |
-| `@folder/` | `Review @samples/book-app-project/` |
-| `@file1.py @file2.py` | `Compare @book_app.py @books.py` |
+| `@file.cs` | `Review @BookCollection.cs` |
+| `@folder/` | `Review @Src/Books.Api/` |
+| `@file1.cs @file2.cs` | `Compare @BookApiEndpoints.cs @BookCollection.cs` |
 | `@image.png` | Paste or reference screenshots for UI analysis |
 
 Cross-file analysis reveals bugs and patterns that single-file review misses entirely.
@@ -129,7 +129,7 @@ copilot --resume=book-app-review
 | `/rewind` | Roll back to any earlier point |
 
 ### Best Practices for Large Codebases
-- Be specific (`@books.py`) rather than broad (`@project/`) when possible.
+- Be specific (`@BookCollection.cs`) rather than broad (`@Src/`) when possible.
 - Use `/new` or `/clear` when switching topics.
 - Split work into one session per feature or topic.
 
@@ -148,10 +148,10 @@ copilot --resume=book-app-review
 
 | Workflow | Best Prompt Pattern |
 |----------|-------------------|
-| **Code Review** | `@file.py Review for [specific concern]` |
-| **Refactoring** | `@file.py Refactor X to use Y pattern` |
-| **Debugging** | `@file.py Users report [symptom]. Debug why.` |
-| **Test Generation** | `@file.py Generate pytest tests including edge cases` |
+| **Code Review** | `@file.cs Review for [specific concern]` |
+| **Refactoring** | `@file.cs Refactor X to use Y pattern` |
+| **Debugging** | `@file.cs Users report [symptom]. Debug why.` |
+| **Test Generation** | `@file.cs Generate xunit tests including edge cases` |
 | **Git Integration** | `copilot -p "Generate commit message for: $(git diff --staged)"` |
 
 ### Highlights
@@ -160,13 +160,13 @@ copilot --resume=book-app-review
 
 **Refactoring** — Generate tests *first*, then refactor safely:
 ```bash
-> @books.py Before refactoring, generate tests for current behavior
-> Now refactor BookCollection to use a context manager for file operations
+> @BookCollection.cs Before refactoring, generate tests for current behavior
+> Now refactor BookCollection to use async/await patterns consistently
 ```
 
 **Debugging** — Describe the symptom, not a vague request:
 ```
-> @books_buggy.py Users report searching for "The Hobbit" returns no results. Debug why.
+> @BookCollection.cs Users report searching for "Building Data Intensive applications" returns no results. Debug why.
 ```
 
 **Test Generation** — A single prompt can produce 15+ tests including edge cases, special characters, and data persistence scenarios.
@@ -184,7 +184,7 @@ copilot -p "Generate a PR description from: $(git log main..HEAD --oneline)"
 
 | Step | Tool |
 |------|------|
-| Understand bug | `> [describe symptom] @file.py Analyze the likely cause` |
+| Understand bug | `> [describe symptom] @file.cs Analyze the likely cause` |
 | Fix | `> Show me the function and fix the issue` |
 | Test | `> Generate tests for [specific scenarios]` |
 | Stage | `git add .` |
@@ -235,7 +235,7 @@ You are a code reviewer focused on finding bugs and security issues.
 copilot
 > /agent              # Pick from list interactively
 
-copilot --agent python-reviewer   # Launch directly with an agent
+copilot --agent dotnet-reviewer   # Launch directly with an agent
 ```
 
 ### Project Configuration Files
@@ -268,12 +268,12 @@ Skills are folders containing a `SKILL.md` file. Copilot reads your prompt and *
 
 ```bash
 > /security-audit Check the API endpoints
-> /code-checklist Review books.py
+> /code-checklist Review BookCollection.cs
 ```
 
 Or combine multiple skills in one message:
 ```bash
-> Check @book_app.py with /code-checklist and also run /generate-tests for it
+> Check @BookApiEndpoints.cs with /code-checklist and also run /generate-tests for it
 ```
 
 ### Agents vs Skills vs MCP
@@ -439,10 +439,10 @@ Gather Context (MCP) → Analyze & Plan (Agents) → Execute (Skills) → Comple
 copilot
 > Describe the feature needed
 
-> /agent               # Switch to python-reviewer
+> /agent               # Switch to dotnet-reviewer
 > Design the method    # Expert code design
 
-> /agent               # Switch to pytest-helper
+> /agent               # Switch to xunit-helper
 > Design test cases    # Expert test design
 
 > Implement the feature
@@ -458,7 +458,7 @@ Set up a git hook to automatically run security reviews before every commit:
 ```bash
 cat > .git/hooks/pre-commit << 'EOF'
 #!/bin/bash
-STAGED=$(git diff --cached --name-only --diff-filter=ACM | grep -E '\.py$')
+STAGED=$(git diff --cached --name-only --diff-filter=ACM | grep -E '\.cs$')
 if [ -n "$STAGED" ]; then
   for file in $STAGED; do
     REVIEW=$(timeout 60 copilot --allow-all -p "Quick security review of @$file - critical issues only")
@@ -494,7 +494,7 @@ chmod +x .git/hooks/pre-commit
 |---------|-----------|---------------|
 | 00 Quick Start | Install & authenticate | `copilot`, `/login` |
 | 01 First Steps | Three interaction modes | `copilot -p`, `/plan`, `/exit` |
-| 02 Context & Conversations | @ file references, sessions | `@file.py`, `--continue`, `--resume` |
+| 02 Context & Conversations | @ file references, sessions | `@file.cs`, `--continue`, `--resume` |
 | 03 Development Workflows | Review, refactor, debug, test, git | `/review`, `/diff`, `/delegate` |
 | 04 Agents | Specialized AI personas | `/agent`, `--agent`, `.agent.md` |
 | 05 Skills | Auto-triggered task instructions | `/skills list`, `SKILL.md` |
