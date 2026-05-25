@@ -9,11 +9,34 @@ public class BookCollection(BooksDbContext booksDbContext, ILogger<BookCollectio
     private readonly BooksDbContext _booksDbContext = booksDbContext;
     private readonly ILogger<BookCollection> _logger = logger;
 
-    public async Task<List<Book>> ReadBooksAsync(CancellationToken cancellationToken)
+    public async Task<PagedBooksResponse> ReadBooksAsync(int pageNumber, int pageSize, string sortBy, string sortOrder, CancellationToken cancellationToken)
     {
-        _logger.LogInformation("Reading all books from the database");
-        var books = await _booksDbContext.Books.ToListAsync(cancellationToken);
-        return books;
+        _logger.LogInformation(
+            "Reading books from the database. PageNumber: {PageNumber}, PageSize: {PageSize}, SortBy: {SortBy}, SortOrder: {SortOrder}",
+            pageNumber,
+            pageSize,
+            sortBy,
+            sortOrder);
+
+        var booksQuery = _booksDbContext.Books.AsNoTracking();
+        var totalCount = await booksQuery.CountAsync(cancellationToken);
+        var totalPages = totalCount == 0 ? 0 : (int)Math.Ceiling(totalCount / (double)pageSize);
+
+        var books = await ApplySorting(booksQuery, sortBy, sortOrder)
+            .Skip((pageNumber - 1) * pageSize)
+            .Take(pageSize)
+            .ToListAsync(cancellationToken);
+
+        return new PagedBooksResponse
+        {
+            Items = books,
+            PageNumber = pageNumber,
+            PageSize = pageSize,
+            TotalCount = totalCount,
+            TotalPages = totalPages,
+            SortBy = sortBy,
+            SortOrder = sortOrder
+        };
     }
 
     public async Task<Book?> ReadBookAsync(string title, CancellationToken cancellationToken)
@@ -66,5 +89,20 @@ public class BookCollection(BooksDbContext booksDbContext, ILogger<BookCollectio
         var inserted = await _booksDbContext.SaveChangesAsync(cancellationToken);
         _logger.LogInformation("Inserted {Count} books into the database", inserted);
         return books;
+    }
+
+    private static IOrderedQueryable<Book> ApplySorting(IQueryable<Book> booksQuery, string sortBy, string sortOrder)
+    {
+        return (sortBy, sortOrder) switch
+        {
+            ("author", "desc") => booksQuery.OrderByDescending(book => book.Author).ThenBy(book => book.Id),
+            ("author", _) => booksQuery.OrderBy(book => book.Author).ThenBy(book => book.Id),
+            ("year", "desc") => booksQuery.OrderByDescending(book => book.Year).ThenBy(book => book.Id),
+            ("year", _) => booksQuery.OrderBy(book => book.Year).ThenBy(book => book.Id),
+            ("read", "desc") => booksQuery.OrderByDescending(book => book.Read).ThenBy(book => book.Id),
+            ("read", _) => booksQuery.OrderBy(book => book.Read).ThenBy(book => book.Id),
+            ("title", "desc") => booksQuery.OrderByDescending(book => book.Title).ThenBy(book => book.Id),
+            _ => booksQuery.OrderBy(book => book.Title).ThenBy(book => book.Id)
+        };
     }
 }

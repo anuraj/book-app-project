@@ -15,7 +15,7 @@ namespace Books.Api.Tests;
 public class BookApiEndpointsTests
 {
     [Fact]
-    public async Task GetBooks_ReturnsEmptyList_WhenNoBooksExist()
+    public async Task GetBooks_ReturnsEmptyPagedResponse_WhenNoBooksExist()
     {
         await using var factory = new BooksApiFactory();
         await EnsureDatabaseCreatedAsync(factory);
@@ -24,9 +24,84 @@ public class BookApiEndpointsTests
         var response = await client.GetAsync("/books/");
 
         response.EnsureSuccessStatusCode();
-        var books = await response.Content.ReadFromJsonAsync<List<Book>>();
+        var books = await response.Content.ReadFromJsonAsync<PagedBooksResponse>();
         Assert.NotNull(books);
-        Assert.Empty(books);
+        Assert.Empty(books.Items);
+        Assert.Equal(1, books.PageNumber);
+        Assert.Equal(10, books.PageSize);
+        Assert.Equal(0, books.TotalCount);
+        Assert.Equal(0, books.TotalPages);
+        Assert.Equal("title", books.SortBy);
+        Assert.Equal("asc", books.SortOrder);
+    }
+
+    [Fact]
+    public async Task GetBooks_ReturnsPagedAndSortedBooks_WhenQueryParametersAreProvided()
+    {
+        await using var factory = new BooksApiFactory();
+        await EnsureDatabaseCreatedAsync(factory);
+        await SeedBooksAsync(factory,
+        [
+            new Book { Title = "Dune", Author = "Frank Herbert", Year = 1965, Read = true },
+            new Book { Title = "Foundation", Author = "Isaac Asimov", Year = 1951, Read = false },
+            new Book { Title = "Neuromancer", Author = "William Gibson", Year = 1984, Read = false }
+        ]);
+
+        using var client = factory.CreateClient(new WebApplicationFactoryClientOptions { BaseAddress = new Uri("https://localhost") });
+
+        var response = await client.GetAsync("/books/?pageNumber=2&pageSize=1&sortBy=year&sortOrder=desc");
+
+        response.EnsureSuccessStatusCode();
+        var books = await response.Content.ReadFromJsonAsync<PagedBooksResponse>();
+        Assert.NotNull(books);
+        Assert.Single(books.Items);
+        Assert.Equal("Dune", books.Items[0].Title);
+        Assert.Equal(2, books.PageNumber);
+        Assert.Equal(1, books.PageSize);
+        Assert.Equal(3, books.TotalCount);
+        Assert.Equal(3, books.TotalPages);
+        Assert.Equal("year", books.SortBy);
+        Assert.Equal("desc", books.SortOrder);
+    }
+
+    [Fact]
+    public async Task GetBooks_ReturnsBadRequest_WhenPagingOrSortingQueryIsInvalid()
+    {
+        await using var factory = new BooksApiFactory();
+        await EnsureDatabaseCreatedAsync(factory);
+        using var client = factory.CreateClient(new WebApplicationFactoryClientOptions { BaseAddress = new Uri("https://localhost") });
+
+        var response = await client.GetAsync("/books/?pageNumber=0&pageSize=101&sortBy=genre&sortOrder=down");
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        var errors = await ReadValidationErrorsAsync(response);
+        Assert.Contains("pageNumber", errors.Keys);
+        Assert.Contains("pageSize", errors.Keys);
+        Assert.Contains("sortBy", errors.Keys);
+        Assert.Contains("sortOrder", errors.Keys);
+    }
+
+    [Fact]
+    public async Task GetBooks_ReturnsEmptyItems_WhenRequestedPageIsBeyondAvailableResults()
+    {
+        await using var factory = new BooksApiFactory();
+        await EnsureDatabaseCreatedAsync(factory);
+        await SeedBooksAsync(factory,
+        [
+            new Book { Title = "Dune", Author = "Frank Herbert", Year = 1965 },
+            new Book { Title = "Foundation", Author = "Isaac Asimov", Year = 1951 }
+        ]);
+
+        using var client = factory.CreateClient(new WebApplicationFactoryClientOptions { BaseAddress = new Uri("https://localhost") });
+
+        var response = await client.GetAsync("/books/?pageNumber=3&pageSize=1");
+
+        response.EnsureSuccessStatusCode();
+        var books = await response.Content.ReadFromJsonAsync<PagedBooksResponse>();
+        Assert.NotNull(books);
+        Assert.Empty(books.Items);
+        Assert.Equal(2, books.TotalCount);
+        Assert.Equal(2, books.TotalPages);
     }
 
     [Fact]
@@ -283,6 +358,15 @@ public class BookApiEndpointsTests
         var context = scope.ServiceProvider.GetRequiredService<BooksDbContext>();
         await context.Database.EnsureCreatedAsync();
         context.Books.Add(book);
+        await context.SaveChangesAsync();
+    }
+
+    private static async Task SeedBooksAsync(BooksApiFactory factory, IEnumerable<Book> books)
+    {
+        await using var scope = factory.Services.CreateAsyncScope();
+        var context = scope.ServiceProvider.GetRequiredService<BooksDbContext>();
+        await context.Database.EnsureCreatedAsync();
+        context.Books.AddRange(books);
         await context.SaveChangesAsync();
     }
 

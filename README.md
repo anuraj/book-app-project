@@ -81,13 +81,50 @@ ConnectionStrings__BooksDbContext="Data Source=/tmp/books.db" dotnet run --proje
 
 | Method | Route | Description |
 | --- | --- | --- |
-| `GET` | `/books/` | Get all books |
+| `GET` | `/books/` | Get books with paging and sorting |
 | `GET` | `/books/{title}` | Get a single book by title |
 | `POST` | `/books/` | Create one book |
 | `POST` | `/books/bulk` | Create multiple books |
 | `PUT` | `/books/{title}` | Update author and year |
 | `PUT` | `/books/{title}/read` | Mark a book as read |
 | `DELETE` | `/books/{title}` | Delete a book |
+
+### Collection query parameters
+
+| Name | Default | Description |
+| --- | --- | --- |
+| `pageNumber` | `1` | 1-based page number |
+| `pageSize` | `10` | Number of books per page, from `1` to `100` |
+| `sortBy` | `title` | Sort field: `title`, `author`, `year`, or `read` |
+| `sortOrder` | `asc` | Sort direction: `asc` or `desc` |
+
+Example:
+
+```bash
+curl "https://localhost:5001/books/?pageNumber=2&pageSize=5&sortBy=year&sortOrder=desc"
+```
+
+Response shape:
+
+```json
+{
+  "items": [
+    {
+      "id": 3,
+      "title": "Neuromancer",
+      "author": "William Gibson",
+      "year": 1984,
+      "read": false
+    }
+  ],
+  "pageNumber": 2,
+  "pageSize": 5,
+  "totalCount": 12,
+  "totalPages": 3,
+  "sortBy": "year",
+  "sortOrder": "desc"
+}
+```
 
 ## Request Model
 

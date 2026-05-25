@@ -5,15 +5,36 @@ namespace Books.Api.Services;
 public static class BookApiEndpoints
 {
     private const int MinPublicationYear = 1450;
+    private const int DefaultPageNumber = 1;
+    private const int DefaultPageSize = 10;
+    private const int MaxPageSize = 100;
+    private static readonly HashSet<string> AllowedSortFields = ["title", "author", "year", "read"];
+    private static readonly HashSet<string> AllowedSortOrders = ["asc", "desc"];
 
     public static void MapBookApiEndpoints(this WebApplication app)
     {
         var logger = app.Logger;
         var api = app.MapGroup("/books");
-        api.MapGet("/", async (BookCollection bookCollection, CancellationToken cancellationToken) =>
+        api.MapGet("/", async (int? pageNumber, int? pageSize, string? sortBy, string? sortOrder, BookCollection bookCollection, CancellationToken cancellationToken) =>
         {
-            logger.LogInformation("Getting all books");
-            var books = await bookCollection.ReadBooksAsync(cancellationToken);
+            var resolvedPageNumber = pageNumber ?? DefaultPageNumber;
+            var resolvedPageSize = pageSize ?? DefaultPageSize;
+            var normalizedSortBy = NormalizeQueryValue(sortBy, "title");
+            var normalizedSortOrder = NormalizeQueryValue(sortOrder, "asc");
+            var errors = ValidateListBooksQuery(resolvedPageNumber, resolvedPageSize, normalizedSortBy, normalizedSortOrder);
+            if (errors.Count > 0)
+            {
+                return Results.ValidationProblem(errors);
+            }
+
+            logger.LogInformation(
+                "Getting books. PageNumber: {PageNumber}, PageSize: {PageSize}, SortBy: {SortBy}, SortOrder: {SortOrder}",
+                resolvedPageNumber,
+                resolvedPageSize,
+                normalizedSortBy,
+                normalizedSortOrder);
+
+            var books = await bookCollection.ReadBooksAsync(resolvedPageNumber, resolvedPageSize, normalizedSortBy, normalizedSortOrder, cancellationToken);
             return Results.Ok(books);
         });
 
@@ -115,6 +136,32 @@ public static class BookApiEndpoints
         return errors;
     }
 
+    private static Dictionary<string, string[]> ValidateListBooksQuery(int pageNumber, int pageSize, string sortBy, string sortOrder)
+    {
+        var errors = new Dictionary<string, string[]>(StringComparer.Ordinal);
+        if (pageNumber < 1)
+        {
+            AddError(errors, "pageNumber", "pageNumber must be greater than 0.");
+        }
+
+        if (pageSize < 1 || pageSize > MaxPageSize)
+        {
+            AddError(errors, "pageSize", $"pageSize must be between 1 and {MaxPageSize}.");
+        }
+
+        if (!AllowedSortFields.Contains(sortBy))
+        {
+            AddError(errors, "sortBy", $"sortBy must be one of: {string.Join(", ", AllowedSortFields)}.");
+        }
+
+        if (!AllowedSortOrders.Contains(sortOrder))
+        {
+            AddError(errors, "sortOrder", $"sortOrder must be one of: {string.Join(", ", AllowedSortOrders)}.");
+        }
+
+        return errors;
+    }
+
     private static Dictionary<string, string[]> ValidateUpdateBook(Book book)
     {
         var errors = new Dictionary<string, string[]>(StringComparer.Ordinal);
@@ -172,5 +219,15 @@ public static class BookApiEndpoints
         }
 
         errors[fieldName] = [message];
+    }
+
+    private static string NormalizeQueryValue(string? value, string defaultValue)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return defaultValue;
+        }
+
+        return value.Trim().ToLowerInvariant();
     }
 }

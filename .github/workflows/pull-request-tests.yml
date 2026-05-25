@@ -2,6 +2,8 @@ name: Pull Request Tests
 
 on:
   pull_request:
+  schedule:
+    - cron: '0 0 * * 1-5'
 
 permissions:
   contents: read
@@ -23,4 +25,4 @@ jobs:
         run: dotnet restore Books.slnx --nologo
 
       - name: Run unit tests
-        run: dotnet test Books.slnx --nologo --no-restore
+        run: dotnet test Books.slnx --nologo --no-restore /p:CollectCoverage=true /p:Threshold=80 /p:ThresholdType=line /p:ThresholdStat=total
