@@ -38,6 +38,20 @@ public class BookCollection(BooksDbContext booksDbContext, ILogger<BookCollectio
         await _booksDbContext.SaveChangesAsync(cancellationToken);
     }
 
+    public async Task<bool> MarkBookAsReadAsync(string title, CancellationToken cancellationToken)
+    {
+        _logger.LogInformation("Marking book with title: {Title} as read in the database", title);
+        var book = await _booksDbContext.Books.FirstOrDefaultAsync(b => b.Title == title, cancellationToken);
+        if (book is null)
+        {
+            return false;
+        }
+
+        book.Read = true;
+        await _booksDbContext.SaveChangesAsync(cancellationToken);
+        return true;
+    }
+
     public async Task DeleteBookAsync(Book book, CancellationToken cancellationToken)
     {
         _logger.LogInformation("Deleting book with title: {Title} from the database", book.Title);

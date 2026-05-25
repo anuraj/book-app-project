@@ -198,6 +198,38 @@ public class BookApiEndpointsTests
     }
 
     [Fact]
+    public async Task MarkBookAsRead_ReturnsNotFound_WhenBookDoesNotExist()
+    {
+        await using var factory = new BooksApiFactory();
+        await EnsureDatabaseCreatedAsync(factory);
+        using var client = factory.CreateClient(new WebApplicationFactoryClientOptions { BaseAddress = new Uri("https://localhost") });
+
+        var response = await client.PutAsync("/books/unknown/read", null);
+
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task MarkBookAsRead_ReturnsNoContent_AndPersistsReadStatus_WhenBookExists()
+    {
+        await using var factory = new BooksApiFactory();
+        await EnsureDatabaseCreatedAsync(factory);
+        await SeedBookAsync(factory, new Book { Title = "The Hobbit", Author = "J.R.R. Tolkien", Year = 1937, Read = false });
+        using var client = factory.CreateClient(new WebApplicationFactoryClientOptions { BaseAddress = new Uri("https://localhost") });
+
+        var response = await client.PutAsync("/books/The Hobbit/read", null);
+
+        Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
+
+        await using var scope = factory.Services.CreateAsyncScope();
+        var context = scope.ServiceProvider.GetRequiredService<BooksDbContext>();
+        var updatedBook = await context.Books.SingleAsync(b => b.Title == "The Hobbit");
+        Assert.True(updatedBook.Read);
+        Assert.Equal("J.R.R. Tolkien", updatedBook.Author);
+        Assert.Equal(1937, updatedBook.Year);
+    }
+
+    [Fact]
     public async Task DeleteBook_ReturnsNotFound_WhenBookDoesNotExist()
     {
         await using var factory = new BooksApiFactory();

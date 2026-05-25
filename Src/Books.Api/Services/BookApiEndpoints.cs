@@ -78,6 +78,19 @@ public static class BookApiEndpoints
             return Results.NoContent();
         });
 
+        api.MapPut("/{title}/read", async (string title, BookCollection bookCollection, CancellationToken cancellationToken) =>
+        {
+            logger.LogInformation("Marking book with title: {Title} as read", title);
+            var markedAsRead = await bookCollection.MarkBookAsReadAsync(title, cancellationToken);
+            if (!markedAsRead)
+            {
+                logger.LogWarning("Book with title: {Title} not found", title);
+                return Results.NotFound();
+            }
+
+            return Results.NoContent();
+        });
+
         api.MapDelete("/{title}", async (string title, BookCollection bookCollection, CancellationToken cancellationToken) =>
         {
             logger.LogInformation("Deleting book with title: {Title}", title);

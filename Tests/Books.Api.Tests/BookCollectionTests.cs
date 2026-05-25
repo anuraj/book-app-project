@@ -93,6 +93,35 @@ public class BookCollectionTests
     }
 
     [Fact]
+    public async Task MarkBookAsReadAsync_ReturnsFalse_WhenBookDoesNotExist()
+    {
+        var databaseName = Guid.NewGuid().ToString();
+        using var context = new TestDbContextFactory(databaseName).CreateDbContext();
+        var sut = new BookCollection(context, Substitute.For<ILogger<BookCollection>>());
+
+        var markedAsRead = await sut.MarkBookAsReadAsync("Missing", CancellationToken.None);
+
+        Assert.False(markedAsRead);
+    }
+
+    [Fact]
+    public async Task MarkBookAsReadAsync_MarksBookAsRead_AndPersists()
+    {
+        var databaseName = Guid.NewGuid().ToString();
+        using var context = new TestDbContextFactory(databaseName).CreateDbContext();
+        context.Books.Add(new Book { Title = "Project Hail Mary", Author = "Andy Weir", Year = 2021, Read = false });
+        await context.SaveChangesAsync();
+
+        var sut = new BookCollection(context, Substitute.For<ILogger<BookCollection>>());
+
+        var markedAsRead = await sut.MarkBookAsReadAsync("Project Hail Mary", CancellationToken.None);
+
+        Assert.True(markedAsRead);
+        var updatedBook = await context.Books.SingleAsync(b => b.Title == "Project Hail Mary");
+        Assert.True(updatedBook.Read);
+    }
+
+    [Fact]
     public async Task DeleteBookAsync_RemovesBook()
     {
         var databaseName = Guid.NewGuid().ToString();
