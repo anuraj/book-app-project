@@ -1,6 +1,6 @@
 # Book App Project
 
-A small ASP.NET Core minimal API for managing a book collection. The API stores data in SQLite with Entity Framework Core and includes automated unit and integration tests.
+A small ASP.NET Core minimal API for managing a book collection. The API stores data in PostgreSQL with Entity Framework Core and includes automated unit and integration tests.
 
 ## Features
 
@@ -20,7 +20,7 @@ A small ASP.NET Core minimal API for managing a book collection. The API stores 
 | Runtime | .NET 10 |
 | API | ASP.NET Core Minimal APIs |
 | Data access | Entity Framework Core |
-| Database | SQLite |
+| Database | PostgreSQL |
 | API docs | Microsoft.AspNetCore.OpenApi + Scalar |
 | Tests | xUnit, ASP.NET Core integration testing, Coverlet |
 
@@ -30,7 +30,8 @@ A small ASP.NET Core minimal API for managing a book collection. The API stores 
 .
 |-- Books.slnx
 |-- Src/
-|   `-- Books.Api/
+|   |-- Books.Api/
+|   `-- Books.AppHost/
 `-- Tests/
     `-- Books.Api.Tests/
 ```
@@ -47,7 +48,7 @@ A small ASP.NET Core minimal API for managing a book collection. The API stores 
    dotnet restore Books.slnx
    ```
 
-2. Create or update the SQLite database before the first run:
+2. Create or update the PostgreSQL database before the first run:
 
    ```bash
    dotnet ef database update --project Src/Books.Api/Books.Api.csproj --startup-project Src/Books.Api/Books.Api.csproj
@@ -59,22 +60,28 @@ A small ASP.NET Core minimal API for managing a book collection. The API stores 
    dotnet run --project Src/Books.Api/Books.Api.csproj
    ```
 
-4. In development, open:
+4. Run with Aspire orchestration:
+
+   ```bash
+   dotnet run --project Src/Books.AppHost/Books.AppHost.csproj
+   ```
+
+5. In development, open:
 
 - Scalar UI: `https://localhost:<port>/scalar`
 - OpenAPI document: `https://localhost:<port>/openapi/v1.json`
 
 ## Configuration
 
-The API reads the database connection string from `ConnectionStrings:BooksDbContext`.
+The API reads the database connection string from `ConnectionStrings:booksdb`.
 
-- Environment variable: `ConnectionStrings__BooksDbContext`
-- Default fallback: `Data Source=Data\books.db`
+- Environment variable: `ConnectionStrings__booksdb`
+- Default fallback: `Host=localhost;Port=5432;Database=booksdb;Username=postgres;Password=postgres`
 
 Example:
 
 ```bash
-ConnectionStrings__BooksDbContext="Data Source=/tmp/books.db" dotnet run --project Src/Books.Api/Books.Api.csproj
+ConnectionStrings__booksdb="Host=localhost;Port=5432;Database=booksdb;Username=postgres;Password=postgres" dotnet run --project Src/Books.Api/Books.Api.csproj
 ```
 
 ## API Endpoints

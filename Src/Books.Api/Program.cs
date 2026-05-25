@@ -3,12 +3,25 @@ using Books.Api.Services;
 using Microsoft.EntityFrameworkCore;
 using Scalar.AspNetCore;
 
-SQLitePCL.Batteries.Init();
-
 var builder = WebApplication.CreateBuilder(args);
 
-builder.Services.AddDbContext<BooksDbContext>(options =>
-    options.UseSqlite(builder.Configuration.GetConnectionString("BooksDbContext") ?? "Data Source=Data\\books.db"));
+builder.Services.AddDbContext<BooksDbContext>((serviceProvider, options) =>
+{
+    var configuration = serviceProvider.GetRequiredService<IConfiguration>();
+    var databaseProvider = configuration["DatabaseProvider"];
+
+    if (string.Equals(databaseProvider, "InMemory", StringComparison.OrdinalIgnoreCase))
+    {
+        var inMemoryDatabaseName = configuration["InMemoryDatabaseName"] ?? "books-api";
+        options.UseInMemoryDatabase(inMemoryDatabaseName);
+        return;
+    }
+
+    options.UseNpgsql(
+        configuration.GetConnectionString("booksdb")
+        ?? configuration.GetConnectionString("BooksDbContext")
+        ?? "Host=localhost;Port=5432;Database=booksdb;Username=postgres;Password=postgres");
+});
 
 builder.Services.AddOpenApi();
 

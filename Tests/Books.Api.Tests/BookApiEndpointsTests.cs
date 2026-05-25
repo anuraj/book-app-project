@@ -394,7 +394,7 @@ public class BookApiEndpointsTests
 
     private sealed class BooksApiFactory : WebApplicationFactory<Program>
     {
-        private readonly string _databasePath = Path.Combine(Path.GetTempPath(), $"books-api-tests-{Guid.NewGuid():N}.db");
+        private readonly string _inMemoryDatabaseName = $"books-api-tests-{Guid.NewGuid():N}";
 
         protected override void ConfigureWebHost(IWebHostBuilder builder)
         {
@@ -403,7 +403,8 @@ public class BookApiEndpointsTests
             {
                 configBuilder.AddInMemoryCollection(new Dictionary<string, string?>
                 {
-                    ["ConnectionStrings:BooksDbContext"] = $"Data Source={_databasePath}"
+                    ["DatabaseProvider"] = "InMemory",
+                    ["InMemoryDatabaseName"] = _inMemoryDatabaseName
                 });
             });
         }
